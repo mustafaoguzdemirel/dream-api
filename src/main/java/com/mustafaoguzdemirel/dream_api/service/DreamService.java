@@ -1,15 +1,20 @@
 package com.mustafaoguzdemirel.dream_api.service;
 
+import com.mustafaoguzdemirel.dream_api.dto.DreamCalendarResponse;
+import com.mustafaoguzdemirel.dream_api.dto.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.dto.DreamSaveRequest;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
 import com.mustafaoguzdemirel.dream_api.repository.DreamRepository;
 import com.mustafaoguzdemirel.dream_api.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.*;
 
 @Service
@@ -90,4 +95,50 @@ public class DreamService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return dreamRepository.findByUser(user);
     }
+
+    public DreamCalendarResponse getDreamCalendar(UUID userId) {
+        AppUser user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Dream> dreams = dreamRepository.findByUser(user);
+
+        int currentYear = LocalDate.now().getYear();
+        List<DreamCalendarResponse.MonthData> monthList = new ArrayList<>();
+
+        for (int month = 1; month <= 12; month++) {
+            YearMonth yearMonth = YearMonth.of(currentYear, month);
+            int daysInMonth = yearMonth.lengthOfMonth();
+
+            List<DreamCalendarResponse.DayData> days = new ArrayList<>();
+
+            for (int day = 1; day <= daysInMonth; day++) { // ← sadece gerçek günler
+                LocalDate date = LocalDate.of(currentYear, month, day);
+                UUID dreamId = dreams.stream()
+                        .filter(d -> d.getCreatedAt().toLocalDate().isEqual(date))
+                        .map(Dream::getId)
+                        .findFirst()
+                        .orElse(null);
+
+                days.add(new DreamCalendarResponse.DayData(day, dreamId));
+            }
+
+            monthList.add(new DreamCalendarResponse.MonthData(month, days));
+        }
+
+
+        return new DreamCalendarResponse(currentYear, monthList);
+    }
+
+    public DreamDetailResponse getDreamDetail(UUID dreamId) {
+        Dream dream = dreamRepository.findById(dreamId)
+                .orElseThrow(() -> new EntityNotFoundException("Dream not found"));
+
+        return new DreamDetailResponse(
+                dream.getId(),
+                dream.getDreamText(),
+                dream.getInterpretation()
+        );
+    }
+
+
 }
