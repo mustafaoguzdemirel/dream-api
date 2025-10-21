@@ -161,16 +161,18 @@ public class DreamService {
         LocalDate today = LocalDate.now();
 
         // Eğer kullanıcı bugün zaten rüya yorumlattıysa hata fırlat
-     //   if (today.equals(user.getLastDreamInterpretedDate())) {
-       //     throw new RuntimeException("User has already interpreted a dream today.");
-        //}
+        //   if (today.equals(user.getLastDreamInterpretedDate())) {
+        //     throw new RuntimeException("User has already interpreted a dream today.");
+        //} //TODO!!!! AÇ
 
         // ✅ Kullanıcının cevaplarından kişisel prompt oluştur
         String userProfilePrompt = buildUserProfilePrompt(userId);
 
         // ✅ GPT'ye gönderilecek tam prompt'u oluştur
-        String fullPrompt = "Interpret this dream in a positive and empathetic way " +
-                userProfilePrompt + ". Dream text: " + dreamText;
+
+        String fullPrompt = "Give a short and emotionally warm interpretation of this dream " +
+                userProfilePrompt + ". Write naturally, like giving comforting advice, but keep it under 150 words. Dream text: " + dreamText;
+
 
         // ✅ GPT'den yorum al (artık fullPrompt gönderiyoruz)
         String interpretation = interpretDream(fullPrompt);
