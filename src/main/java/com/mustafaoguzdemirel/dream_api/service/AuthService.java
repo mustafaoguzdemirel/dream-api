@@ -1,6 +1,6 @@
 package com.mustafaoguzdemirel.dream_api.service;
 
-import com.mustafaoguzdemirel.dream_api.dto.DreamDetailResponse;
+import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
 import com.mustafaoguzdemirel.dream_api.repository.DreamRepository;

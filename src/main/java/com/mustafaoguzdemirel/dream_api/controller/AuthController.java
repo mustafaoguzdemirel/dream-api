@@ -1,10 +1,9 @@
 package com.mustafaoguzdemirel.dream_api.controller;
 
-import com.mustafaoguzdemirel.dream_api.dto.ApiResponse;
-import com.mustafaoguzdemirel.dream_api.dto.DreamDetailResponse;
+import com.mustafaoguzdemirel.dream_api.dto.response.ApiResponse;
+import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.service.AuthService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

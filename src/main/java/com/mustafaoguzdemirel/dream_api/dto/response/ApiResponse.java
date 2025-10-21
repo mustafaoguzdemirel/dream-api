@@ -1,7 +1,6 @@
-package com.mustafaoguzdemirel.dream_api.dto;
+package com.mustafaoguzdemirel.dream_api.dto.response;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 public class ApiResponse<T> {
     private boolean success;

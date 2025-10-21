@@ -1,4 +1,4 @@
-package com.mustafaoguzdemirel.dream_api.dto;
+package com.mustafaoguzdemirel.dream_api.dto.response;
 
 import java.util.UUID;
 

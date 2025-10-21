@@ -1,4 +1,4 @@
-package com.mustafaoguzdemirel.dream_api.dto;
+package com.mustafaoguzdemirel.dream_api.dto.request;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -1,6 +1,6 @@
 package com.mustafaoguzdemirel.dream_api.exception;
 
-import com.mustafaoguzdemirel.dream_api.dto.ApiResponse;
+import com.mustafaoguzdemirel.dream_api.dto.response.ApiResponse;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
