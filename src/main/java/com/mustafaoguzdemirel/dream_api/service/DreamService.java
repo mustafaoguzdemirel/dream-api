@@ -5,8 +5,9 @@ import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
-import com.mustafaoguzdemirel.dream_api.repository.DreamRepository;
-import com.mustafaoguzdemirel.dream_api.repository.UserRepository;
+import com.mustafaoguzdemirel.dream_api.entity.UserAnswer;
+import com.mustafaoguzdemirel.dream_api.enums.QuestionType;
+import com.mustafaoguzdemirel.dream_api.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DreamService {
@@ -25,21 +27,33 @@ public class DreamService {
 
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
-    private final DreamRepository dreamRepository;
+    private final UserAnswerRepository userAnswerRepository;
+    private final QuestionRepository questionRepository;
+    private final OptionRepository optionRepository;
     private final UserRepository userRepository;
+    private final DreamRepository dreamRepository;
 
-    public DreamService(DreamRepository dreamRepository, UserRepository userRepository) {
-        this.dreamRepository = dreamRepository;
+    public DreamService(
+            UserAnswerRepository userAnswerRepository,
+            QuestionRepository questionRepository,
+            OptionRepository optionRepository,
+            UserRepository userRepository,
+            DreamRepository dreamRepository
+    ) {
+        this.userAnswerRepository = userAnswerRepository;
+        this.questionRepository = questionRepository;
+        this.optionRepository = optionRepository;
         this.userRepository = userRepository;
+        this.dreamRepository = dreamRepository;
     }
 
-    public String interpretDream(String dreamText) {
+    public String interpretDream(String prompt) {
         try {
             RestTemplate restTemplate = new RestTemplate();
 
             Map<String, Object> message = new HashMap<>();
             message.put("role", "user");
-            message.put("content", "Interpret this dream in a positive and empathetic way: " + dreamText);
+            message.put("content", prompt);
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", "gpt-4o-mini");
@@ -147,12 +161,19 @@ public class DreamService {
         LocalDate today = LocalDate.now();
 
         // Eğer kullanıcı bugün zaten rüya yorumlattıysa hata fırlat
-        if (today.equals(user.getLastDreamInterpretedDate())) {
-            throw new RuntimeException("User has already interpreted a dream today.");
-        }
+     //   if (today.equals(user.getLastDreamInterpretedDate())) {
+       //     throw new RuntimeException("User has already interpreted a dream today.");
+        //}
 
-        // GPT'den yorum al
-        String interpretation = interpretDream(dreamText);
+        // ✅ Kullanıcının cevaplarından kişisel prompt oluştur
+        String userProfilePrompt = buildUserProfilePrompt(userId);
+
+        // ✅ GPT'ye gönderilecek tam prompt'u oluştur
+        String fullPrompt = "Interpret this dream in a positive and empathetic way " +
+                userProfilePrompt + ". Dream text: " + dreamText;
+
+        // ✅ GPT'den yorum al (artık fullPrompt gönderiyoruz)
+        String interpretation = interpretDream(fullPrompt);
 
         // Yeni dream kaydını oluştur
         Dream dream = new Dream();
@@ -172,10 +193,43 @@ public class DreamService {
         data.put("interpretation", interpretation);
         data.put("dreamId", dream.getId());
         data.put("createdAt", dream.getCreatedAt().toString());
+        data.put("prompt", fullPrompt); // istersen debug için ekleyebilirsin
         return data;
     }
 
+    private String buildUserProfilePrompt(UUID userId) {
+        List<UserAnswer> answers = userAnswerRepository.findByUser_UserId(userId);
 
+        if (answers.isEmpty()) {
+            return "for a general audience with no specific profile";
+        }
 
+        StringBuilder profile = new StringBuilder("for a person who ");
+
+        Map<QuestionType, String> answerMap = answers.stream()
+                .collect(Collectors.toMap(a -> a.getQuestion().getType(), a -> a.getOption().getContent()));
+
+        for (Map.Entry<QuestionType, String> entry : answerMap.entrySet()) {
+            QuestionType type = entry.getKey();
+            String option = entry.getValue();
+
+            switch (type) {
+                case AGE_RANGE -> profile.append("is ").append(option).append(" years old, ");
+                case GENDER_IDENTITY -> profile.append("identifies as ").append(option).append(", ");
+                case PERSONALITY -> profile.append("has a ").append(option.toLowerCase()).append(" personality, ");
+                case DREAM_RECALL -> profile.append("remembers dreams ").append(option.toLowerCase()).append(", ");
+                case VIEW_ON_DREAMS -> profile.append("views dreams ").append(option.toLowerCase()).append(", ");
+                case LIFE_FOCUS -> profile.append("is mainly focused on ").append(option.toLowerCase()).append(", ");
+                case EMOTIONAL_STATE -> profile.append("feels ").append(option.toLowerCase()).append(" lately, ");
+                case SPIRITUALITY -> profile.append("is ").append(option.toLowerCase()).append(" spiritual, ");
+                case SELF_UNDERSTANDING ->
+                        profile.append("believes they understand themselves ").append(option.toLowerCase()).append(", ");
+            }
+        }
+
+        String finalText = profile.toString().trim();
+        if (finalText.endsWith(",")) finalText = finalText.substring(0, finalText.length() - 1);
+        return finalText;
+    }
 
 }

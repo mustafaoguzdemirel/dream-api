@@ -1,5 +1,6 @@
 package com.mustafaoguzdemirel.dream_api.entity;
 
+import com.mustafaoguzdemirel.dream_api.enums.QuestionType;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -16,6 +17,10 @@ public class Question {
 
     @Column(name = "order_index")
     private Integer orderIndex;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private QuestionType type;
 
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Option> options;
@@ -35,4 +40,12 @@ public class Question {
 
     public List<Option> getOptions() { return options; }
     public void setOptions(List<Option> options) { this.options = options; }
+
+    public QuestionType getType() {
+        return type;
+    }
+
+    public void setType(QuestionType type) {
+        this.type = type;
+    }
 }
