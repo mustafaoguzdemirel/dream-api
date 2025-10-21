@@ -199,6 +199,33 @@ public class DreamService {
         return data;
     }
 
+    public Map<String, Object> getDetailedInterpretation(UUID dreamId) {
+        Dream dream = dreamRepository.findById(dreamId)
+                .orElseThrow(() -> new RuntimeException("Dream not found"));
+
+        AppUser user = dream.getUser();
+        String userProfilePrompt = buildUserProfilePrompt(user.getUserId());
+
+        String fullPrompt = "You are an experienced dream analyst. Provide a detailed and insightful interpretation " +
+                "of the following dream, taking into account the user's personality and emotional profile " + userProfilePrompt +
+                ". Expand upon the short interpretation provided below, adding psychological, emotional, and symbolic analysis. " +
+                "Write in a compassionate and inspiring tone, around 300–500 words. " +
+                "\n\nDream text: " + dream.getDreamText() +
+                "\n\nShort interpretation: " + dream.getInterpretation();
+
+        String detailedInterpretation = interpretDream(fullPrompt);
+
+        // 💾 kaydı güncelle
+        dream.setDetailedInterpretation(detailedInterpretation);
+        dreamRepository.save(dream);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("dreamId", dream.getId());
+        result.put("detailedInterpretation", detailedInterpretation);
+        result.put("createdAt", dream.getCreatedAt().toString());
+        return result;
+    }
+
     private String buildUserProfilePrompt(UUID userId) {
         List<UserAnswer> answers = userAnswerRepository.findByUser_UserId(userId);
 

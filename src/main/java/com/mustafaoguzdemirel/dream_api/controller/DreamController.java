@@ -111,4 +111,18 @@ public class DreamController {
         }
     }
 
+    @PostMapping("/detailed-interpret/{dreamId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDetailedInterpretation(@PathVariable UUID dreamId) {
+        try {
+            Map<String, Object> result = dreamService.getDetailedInterpretation(dreamId);
+            return ResponseEntity.ok(ApiResponse.success("Detailed interpretation generated successfully", result));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("DREAM_NOT_FOUND", e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("INTERNAL_ERROR", "Unexpected error occurred", null));
+        }
+    }
+
 }

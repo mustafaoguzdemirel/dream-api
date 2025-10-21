@@ -22,6 +22,9 @@ public class Dream {
     @Column(columnDefinition = "TEXT")
     private String interpretation;
 
+    @Column(columnDefinition = "TEXT")
+    private String detailedInterpretation;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -67,6 +70,16 @@ public class Dream {
     public void setInterpretation(String interpretation) {
         this.interpretation = interpretation;
     }
+
+
+    public String getDetailedInterpretation() {
+        return detailedInterpretation;
+    }
+
+    public void setDetailedInterpretation(String detailedInterpretation) {
+        this.detailedInterpretation = detailedInterpretation;
+    }
+
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
