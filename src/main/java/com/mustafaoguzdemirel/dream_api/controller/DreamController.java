@@ -5,6 +5,7 @@ import com.mustafaoguzdemirel.dream_api.dto.response.DreamCalendarResponse;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
+import com.mustafaoguzdemirel.dream_api.entity.MoodAnalysis;
 import com.mustafaoguzdemirel.dream_api.service.DreamService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -122,6 +123,34 @@ public class DreamController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("INTERNAL_ERROR", "Unexpected error occurred", null));
+        }
+    }
+
+    @GetMapping("/mood-analysis/{userId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMoodAnalysis(@PathVariable UUID userId) {
+        try {
+            Map<String, Object> result = dreamService.analyzeRecentDreams(userId);
+            return ResponseEntity.ok(ApiResponse.success("Mood analysis generated successfully", result));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("ANALYSIS_ERROR", e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("INTERNAL_ERROR", e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/mood-history/{userId}")
+    public ResponseEntity<ApiResponse<List<MoodAnalysis>>> getMoodHistory(@PathVariable UUID userId) {
+        try {
+            List<MoodAnalysis> history = dreamService.getMoodHistory(userId);
+            return ResponseEntity.ok(ApiResponse.success("Mood analysis history fetched", history));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("NOT_FOUND", e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("INTERNAL_ERROR", e.getMessage(), null));
         }
     }
 

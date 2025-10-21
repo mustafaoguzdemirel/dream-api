@@ -1,10 +1,13 @@
 package com.mustafaoguzdemirel.dream_api.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamCalendarResponse;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
+import com.mustafaoguzdemirel.dream_api.entity.MoodAnalysis;
 import com.mustafaoguzdemirel.dream_api.entity.UserAnswer;
 import com.mustafaoguzdemirel.dream_api.enums.QuestionType;
 import com.mustafaoguzdemirel.dream_api.repository.*;
@@ -32,19 +35,22 @@ public class DreamService {
     private final OptionRepository optionRepository;
     private final UserRepository userRepository;
     private final DreamRepository dreamRepository;
+    private final MoodAnalysisRepository moodAnalysisRepository;
 
     public DreamService(
             UserAnswerRepository userAnswerRepository,
             QuestionRepository questionRepository,
             OptionRepository optionRepository,
             UserRepository userRepository,
-            DreamRepository dreamRepository
+            DreamRepository dreamRepository,
+            MoodAnalysisRepository moodAnalysisRepository
     ) {
         this.userAnswerRepository = userAnswerRepository;
         this.questionRepository = questionRepository;
         this.optionRepository = optionRepository;
         this.userRepository = userRepository;
         this.dreamRepository = dreamRepository;
+        this.moodAnalysisRepository = moodAnalysisRepository;
     }
 
     public String interpretDream(String prompt) {
@@ -228,6 +234,63 @@ public class DreamService {
         return result;
     }
 
+    public Map<String, Object> analyzeRecentDreams(UUID userId) {
+        AppUser user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Dream> dreams = dreamRepository.findTop5ByUserOrderByCreatedAtDesc(user);
+        if (dreams.isEmpty()) {
+            throw new RuntimeException("No dreams found for this user.");
+        }
+
+        String allDreams = dreams.stream()
+                .map(Dream::getDreamText)
+                .collect(Collectors.joining("\n---\n"));
+
+        String userProfilePrompt = buildUserProfilePrompt(userId);
+
+        String prompt =
+                "You are an expert dream psychologist. Analyze the following dreams as a whole " +
+                        "for a person who fits this description: " + userProfilePrompt + ". " +
+                        "Find recurring emotional patterns, symbols, or themes across them. " +
+                        "Summarize the user's current emotional and psychological state in around 150–200 words. " +
+                        "Be empathetic, insightful, and write naturally. " +
+                        "Respond ONLY in the following JSON format without any extra text:\n\n" +
+                        "{\n" +
+                        "  \"dominant_emotions\": [\"emotion1\", \"emotion2\", ...],\n" +
+                        "  \"recurring_symbols\": [\"symbol1\", \"symbol2\", ...],\n" +
+                        "  \"analysis\": \"Your 150–200 word empathetic summary here\"\n" +
+                        "}\n\n" +
+                        "Dreams:\n" + allDreams;
+
+        String jsonResponse = interpretDream(prompt);
+
+        jsonResponse = jsonResponse.replaceAll("(?s)^.*?\\{", "{").replaceAll("}.*$", "}");
+
+        Map<String, Object> parsed;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            parsed = mapper.readValue(jsonResponse, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (Exception e) {
+            parsed = Map.of("raw_response", jsonResponse);
+        }
+
+        // ✅ JSON’dan alanları çıkar
+        List<String> dominantEmotions = (List<String>) parsed.get("dominant_emotions");
+        List<String> recurringSymbols = (List<String>) parsed.get("recurring_symbols");
+        String analysis = (String) parsed.get("analysis");
+
+        // ✅ MoodAnalysis tablosuna kaydet
+        MoodAnalysis moodAnalysis = new MoodAnalysis(user, dominantEmotions, recurringSymbols, analysis);
+        moodAnalysisRepository.save(moodAnalysis);
+
+        parsed.put("savedId", moodAnalysis.getId());
+        parsed.put("dreamCount", dreams.size());
+        return parsed;
+    }
+
+
     private String buildUserProfilePrompt(UUID userId) {
         List<UserAnswer> answers = userAnswerRepository.findByUser_UserId(userId);
 
@@ -261,6 +324,13 @@ public class DreamService {
         String finalText = profile.toString().trim();
         if (finalText.endsWith(",")) finalText = finalText.substring(0, finalText.length() - 1);
         return finalText;
+    }
+
+    public List<MoodAnalysis> getMoodHistory(UUID userId) {
+        AppUser user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return moodAnalysisRepository.findAllByUserOrderByCreatedAtDesc(user);
     }
 
 }
