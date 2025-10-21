@@ -52,7 +52,9 @@ public class AuthService {
                 .map(d -> new DreamDetailResponse(
                         d.getId(),
                         d.getDreamText(),
-                        d.getInterpretation()
+                        d.getInterpretation(),
+                        d.getDetailedInterpretation(),
+                        d.getCreatedAt()
                 ))
                 .orElse(null);
     }

@@ -150,7 +150,9 @@ public class DreamService {
         return new DreamDetailResponse(
                 dream.getId(),
                 dream.getDreamText(),
-                dream.getInterpretation()
+                dream.getInterpretation(),
+                dream.getDetailedInterpretation(),
+                dream.getCreatedAt()
         );
     }
 
