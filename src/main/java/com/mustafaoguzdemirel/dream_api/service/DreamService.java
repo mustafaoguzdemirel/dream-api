@@ -140,5 +140,42 @@ public class DreamService {
         );
     }
 
+    public Map<String, Object> interpretDreamForUser(UUID userId, String dreamText) {
+        AppUser user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        LocalDate today = LocalDate.now();
+
+        // Eğer kullanıcı bugün zaten rüya yorumlattıysa hata fırlat
+        if (today.equals(user.getLastDreamInterpretedDate())) {
+            throw new RuntimeException("User has already interpreted a dream today.");
+        }
+
+        // GPT'den yorum al
+        String interpretation = interpretDream(dreamText);
+
+        // Yeni dream kaydını oluştur
+        Dream dream = new Dream();
+        dream.setUser(user);
+        dream.setDreamText(dreamText);
+        dream.setInterpretation(interpretation);
+        dream.setCreatedAt(LocalDateTime.now());
+
+        dreamRepository.save(dream);
+
+        // Kullanıcının son yorum tarihini bugüne güncelle
+        user.setLastDreamInterpretedDate(today);
+        userRepository.save(user);
+
+        // Response oluştur
+        Map<String, Object> data = new HashMap<>();
+        data.put("interpretation", interpretation);
+        data.put("dreamId", dream.getId());
+        data.put("createdAt", dream.getCreatedAt().toString());
+        return data;
+    }
+
+
+
 
 }

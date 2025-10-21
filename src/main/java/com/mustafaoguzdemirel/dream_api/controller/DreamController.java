@@ -27,13 +27,29 @@ public class DreamController {
 
     @PostMapping("/interpret")
     public ResponseEntity<ApiResponse<Map<String, Object>>> interpretDream(@RequestBody Map<String, String> request) {
-        String dreamText = request.get("dreamText");
+        try {
+            String dreamText = request.get("dreamText");
+            String userIdStr = request.get("userId");
 
-        String interpretation = dreamService.interpretDream(dreamText);
+            if (dreamText == null || userIdStr == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("INVALID_REQUEST", "Missing userId or dreamText", null));
+            }
 
-        return ResponseEntity.ok(ApiResponse.success("Dream interpreted successfully",
-                Map.of("interpretation", interpretation)));
+            UUID userId = UUID.fromString(userIdStr);
+            Map<String, Object> result = dreamService.interpretDreamForUser(userId, dreamText);
+
+            return ResponseEntity.ok(ApiResponse.success("Dream interpreted successfully", result));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("DREAM_LIMIT_REACHED", e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("INTERNAL_ERROR", "Unexpected error occurred", null));
+        }
     }
+
 
     @PostMapping("/save")
     public ResponseEntity<ApiResponse<Dream>> saveDream(@RequestBody DreamSaveRequest request) {

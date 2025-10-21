@@ -1,6 +1,8 @@
 package com.mustafaoguzdemirel.dream_api.entity;
 
 import jakarta.persistence.*;
+
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -13,6 +15,9 @@ public class AppUser {
 
     @Column(nullable = false, unique = true)
     private UUID userId;
+
+    @Column(name = "last_dream_interpreted_date")
+    private LocalDate lastDreamInterpretedDate;
 
     public AppUser() {}
 
@@ -31,5 +36,14 @@ public class AppUser {
     public void setUserId(UUID userId) {
         this.userId = userId;
     }
+
+    public LocalDate getLastDreamInterpretedDate() {
+        return lastDreamInterpretedDate;
+    }
+
+    public void setLastDreamInterpretedDate(LocalDate lastDreamInterpretedDate) {
+        this.lastDreamInterpretedDate = lastDreamInterpretedDate;
+    }
+
 }
 
