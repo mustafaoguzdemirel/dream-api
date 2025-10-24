@@ -162,7 +162,7 @@ public class DreamService {
         );
     }
 
-    public Map<String, Object> interpretDreamForUser(UUID userId, String dreamText) {
+    public DreamDetailResponse interpretDreamForUser(UUID userId, String dreamText) {
         AppUser user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -198,16 +198,25 @@ public class DreamService {
         user.setLastDreamInterpretedDate(today);
         userRepository.save(user);
 
-        // Response oluştur
-        Map<String, Object> data = new HashMap<>();
-        data.put("interpretation", interpretation);
-        data.put("dreamId", dream.getId());
-        data.put("createdAt", dream.getCreatedAt().toString());
-        data.put("prompt", fullPrompt); // istersen debug için ekleyebilirsin
-        return data;
+        DreamDetailResponse dreamDetailResponse = new DreamDetailResponse(
+                dream.getId(),
+                dream.getDreamText(),
+                interpretation,
+                "",
+                dream.getCreatedAt()
+        );
+
+        // Response oluştur (old response)
+        //   Map<String, Object> data = new HashMap<>();
+        //   data.put("interpretation", interpretation);
+        //   data.put("dreamId", dream.getId());
+        //   data.put("createdAt", dream.getCreatedAt().toString());
+        //   data.put("prompt", fullPrompt); // istersen debug için ekleyebilirsin
+
+        return dreamDetailResponse;
     }
 
-    public Map<String, Object> getDetailedInterpretation(UUID dreamId) {
+    public DreamDetailResponse getDetailedInterpretation(UUID dreamId) {
         Dream dream = dreamRepository.findById(dreamId)
                 .orElseThrow(() -> new RuntimeException("Dream not found"));
 
@@ -227,11 +236,21 @@ public class DreamService {
         dream.setDetailedInterpretation(detailedInterpretation);
         dreamRepository.save(dream);
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("dreamId", dream.getId());
-        result.put("detailedInterpretation", detailedInterpretation);
-        result.put("createdAt", dream.getCreatedAt().toString());
-        return result;
+        DreamDetailResponse dreamDetailResponse = new DreamDetailResponse(
+                dream.getId(),
+                dream.getDreamText(),
+                dream.getInterpretation(),
+                detailedInterpretation,
+                dream.getCreatedAt()
+        );
+
+        // Response oluştur (old response)
+        //   Map<String, Object> result = new HashMap<>();
+     //   result.put("dreamId", dream.getId());
+     //   result.put("detailedInterpretation", detailedInterpretation);
+     //   result.put("createdAt", dream.getCreatedAt().toString());
+
+        return dreamDetailResponse;
     }
 
     public Map<String, Object> analyzeRecentDreams(UUID userId) {

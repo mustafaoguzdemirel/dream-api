@@ -27,7 +27,7 @@ public class DreamController {
     }
 
     @PostMapping("/interpret")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> interpretDream(@RequestBody Map<String, String> request) {
+    public ResponseEntity<ApiResponse<DreamDetailResponse>> interpretDream(@RequestBody Map<String, String> request) {
         try {
             String dreamText = request.get("dreamText");
             String userIdStr = request.get("userId");
@@ -38,7 +38,7 @@ public class DreamController {
             }
 
             UUID userId = UUID.fromString(userIdStr);
-            Map<String, Object> result = dreamService.interpretDreamForUser(userId, dreamText);
+            DreamDetailResponse result = dreamService.interpretDreamForUser(userId, dreamText);
 
             return ResponseEntity.ok(ApiResponse.success("Dream interpreted successfully", result));
 
@@ -113,9 +113,9 @@ public class DreamController {
     }
 
     @PostMapping("/detailed-interpret/{dreamId}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getDetailedInterpretation(@PathVariable UUID dreamId) {
+    public ResponseEntity<ApiResponse<DreamDetailResponse>> getDetailedInterpretation(@PathVariable UUID dreamId) {
         try {
-            Map<String, Object> result = dreamService.getDetailedInterpretation(dreamId);
+            DreamDetailResponse result = dreamService.getDetailedInterpretation(dreamId);
             return ResponseEntity.ok(ApiResponse.success("Detailed interpretation generated successfully", result));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
