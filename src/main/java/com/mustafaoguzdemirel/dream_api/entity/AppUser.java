@@ -16,6 +16,12 @@ public class AppUser {
     @Column(nullable = false, unique = true)
     private UUID userId;
 
+    @Column(name = "google_id", unique = true)
+    private String googleId;
+
+    @Column(name = "email")
+    private String email;
+
     @Column(name = "last_dream_interpreted_date")
     private LocalDate lastDreamInterpretedDate;
 
@@ -45,5 +51,20 @@ public class AppUser {
         this.lastDreamInterpretedDate = lastDreamInterpretedDate;
     }
 
+    public String getGoogleId() {
+        return googleId;
+    }
+
+    public void setGoogleId(String googleId) {
+        this.googleId = googleId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
 }
 

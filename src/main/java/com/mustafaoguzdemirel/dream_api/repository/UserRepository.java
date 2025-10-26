@@ -10,5 +10,6 @@ import java.util.UUID;
 @Repository
 public interface UserRepository extends JpaRepository<AppUser, Long> {
     Optional<AppUser> findByUserId(UUID userId);
+    Optional<AppUser> findByGoogleId(String googleId);
 }
 

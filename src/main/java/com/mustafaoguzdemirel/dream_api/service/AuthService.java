@@ -59,5 +59,29 @@ public class AuthService {
                 .orElse(null);
     }
 
+    public AppUser linkOrCreateGoogleUser(String googleId, String email, String anonymousUserIdStr) {
+        // 1. Daha önce Google hesabı kayıtlı mı?
+        AppUser existing = userRepository.findByGoogleId(googleId).orElse(null);
+        if (existing != null) return existing;
+
+        // 2. Eğer anonim user varsa, onu Google hesabına bağla
+        if (anonymousUserIdStr != null && !anonymousUserIdStr.isBlank()) {
+            UUID anonId = UUID.fromString(anonymousUserIdStr);
+            AppUser anonUser = userRepository.findByUserId(anonId).orElse(null);
+            if (anonUser != null) {
+                anonUser.setGoogleId(googleId);
+                anonUser.setEmail(email);
+                return userRepository.save(anonUser);
+            }
+        }
+
+        // 3. Aksi halde yeni Google user oluştur
+        AppUser newUser = new AppUser(UUID.randomUUID());
+        newUser.setGoogleId(googleId);
+        newUser.setEmail(email);
+        return userRepository.save(newUser);
+    }
+
+
 
 }
