@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamCalendarResponse;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
+import com.mustafaoguzdemirel.dream_api.dto.response.DreamListItemResponse;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
 import com.mustafaoguzdemirel.dream_api.entity.MoodAnalysis;
@@ -19,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -300,12 +302,25 @@ public class DreamService {
         List<String> recurringSymbols = (List<String>) parsed.get("recurring_symbols");
         String analysis = (String) parsed.get("analysis");
 
+        List<DreamListItemResponse> analyzedDreamList = dreams.stream()
+                .map(dream -> new DreamListItemResponse(
+                        dream.getCreatedAt().getDayOfMonth(),
+                        dream.getCreatedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                        dream.getDreamText().length() > 50
+                                ? dream.getDreamText().substring(0, 50) + "..."
+                                : dream.getDreamText(),
+                        dream.getId()
+                ))
+                .collect(Collectors.toList());
+
         // ✅ MoodAnalysis tablosuna kaydet
         MoodAnalysis moodAnalysis = new MoodAnalysis(user, dominantEmotions, recurringSymbols, analysis);
+        moodAnalysis.setAnalyzedDreams(analyzedDreamList);
         moodAnalysisRepository.save(moodAnalysis);
 
         parsed.put("savedId", moodAnalysis.getId());
         parsed.put("dreamCount", dreams.size());
+        parsed.put("analyzedDreams", analyzedDreamList);
         return parsed;
     }
 
@@ -350,6 +365,31 @@ public class DreamService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         return moodAnalysisRepository.findAllByUserOrderByCreatedAtDesc(user);
+    }
+
+
+    public List<DreamListItemResponse> getDreamList(UUID userId, boolean isLastThree) {
+        AppUser user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Dream> dreams;
+        if (isLastThree) {
+            dreams = dreamRepository.findTop3ByUserOrderByCreatedAtDesc(user);
+        } else {
+            dreams = dreamRepository.findByUserOrderByCreatedAtDesc(user);
+        }
+
+        return dreams.stream()
+                .map(dream -> new DreamListItemResponse(
+                        dream.getCreatedAt().getDayOfMonth(),
+                        dream.getCreatedAt().getMonth()
+                                .getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                        dream.getDreamText().length() > 50
+                                ? dream.getDreamText().substring(0, 50) + "..."
+                                : dream.getDreamText(),
+                        dream.getId()
+                ))
+                .collect(Collectors.toList());
     }
 
 }

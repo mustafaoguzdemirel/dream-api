@@ -1,6 +1,9 @@
 package com.mustafaoguzdemirel.dream_api.entity;
 
+import com.mustafaoguzdemirel.dream_api.dto.response.DreamListItemResponse;
+import com.mustafaoguzdemirel.dream_api.entity.converter.DreamListItemResponseConverter;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -33,7 +36,12 @@ public class MoodAnalysis {
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public MoodAnalysis() {}
+    @Convert(converter = DreamListItemResponseConverter.class)
+    @Column(columnDefinition = "TEXT")
+    private List<DreamListItemResponse> analyzedDreams;
+
+    public MoodAnalysis() {
+    }
 
     public MoodAnalysis(AppUser user, List<String> dominantEmotions, List<String> recurringSymbols, String analysis) {
         this.user = user;
@@ -44,22 +52,60 @@ public class MoodAnalysis {
     }
 
     // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public AppUser getUser() { return user; }
-    public void setUser(AppUser user) { this.user = user; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public List<String> getDominantEmotions() { return dominantEmotions; }
-    public void setDominantEmotions(List<String> dominantEmotions) { this.dominantEmotions = dominantEmotions; }
+    public AppUser getUser() {
+        return user;
+    }
 
-    public List<String> getRecurringSymbols() { return recurringSymbols; }
-    public void setRecurringSymbols(List<String> recurringSymbols) { this.recurringSymbols = recurringSymbols; }
+    public void setUser(AppUser user) {
+        this.user = user;
+    }
 
-    public String getAnalysis() { return analysis; }
-    public void setAnalysis(String analysis) { this.analysis = analysis; }
+    public List<String> getDominantEmotions() {
+        return dominantEmotions;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setDominantEmotions(List<String> dominantEmotions) {
+        this.dominantEmotions = dominantEmotions;
+    }
+
+    public List<String> getRecurringSymbols() {
+        return recurringSymbols;
+    }
+
+    public void setRecurringSymbols(List<String> recurringSymbols) {
+        this.recurringSymbols = recurringSymbols;
+    }
+
+    public String getAnalysis() {
+        return analysis;
+    }
+
+    public void setAnalysis(String analysis) {
+        this.analysis = analysis;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public List<DreamListItemResponse> getAnalyzedDreams() {
+        return analyzedDreams;
+    }
+
+    public void setAnalyzedDreams(List<DreamListItemResponse> analyzedDreams) {
+        this.analyzedDreams = analyzedDreams;
+    }
 }
 

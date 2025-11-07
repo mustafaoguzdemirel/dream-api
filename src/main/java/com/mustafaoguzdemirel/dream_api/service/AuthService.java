@@ -44,7 +44,7 @@ public class AuthService {
     }
 
     public DreamDetailResponse getTodayDreamIfExists(AppUser user, LocalDate today) {
-        List<Dream> dreams = dreamRepository.findByUser(user);
+        List<Dream> dreams = dreamRepository.findByUserOrderByCreatedAtDesc(user);
 
         return dreams.stream()
                 .filter(d -> d.getCreatedAt().toLocalDate().isEqual(today))

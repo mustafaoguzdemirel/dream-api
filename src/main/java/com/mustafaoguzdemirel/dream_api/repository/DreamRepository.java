@@ -14,4 +14,8 @@ public interface DreamRepository extends JpaRepository<Dream, UUID> {
 
     List<Dream> findTop5ByUserOrderByCreatedAtDesc(AppUser user);
 
+    List<Dream> findByUserOrderByCreatedAtDesc(AppUser user);
+    List<Dream> findTop3ByUserOrderByCreatedAtDesc(AppUser user);
+
+
 }

@@ -4,6 +4,7 @@ import com.mustafaoguzdemirel.dream_api.dto.response.ApiResponse;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamCalendarResponse;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
+import com.mustafaoguzdemirel.dream_api.dto.response.DreamListItemResponse;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
 import com.mustafaoguzdemirel.dream_api.entity.MoodAnalysis;
 import com.mustafaoguzdemirel.dream_api.service.DreamService;
@@ -151,6 +152,25 @@ public class DreamController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("INTERNAL_ERROR", e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/list/{userId}")
+    public ResponseEntity<ApiResponse<List<DreamListItemResponse>>> getDreamList(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "false") boolean isLastThree
+    ) {
+        try {
+            List<DreamListItemResponse> list = dreamService.getDreamList(userId, isLastThree);
+            return ResponseEntity.ok(
+                    ApiResponse.success("Dream list fetched successfully", list)
+            );
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("USER_NOT_FOUND", e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("INTERNAL_ERROR", "Unexpected error occurred", null));
         }
     }
 
