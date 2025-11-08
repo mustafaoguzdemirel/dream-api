@@ -88,5 +88,10 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Google user authenticated", data));
     }
 
+    @DeleteMapping("/delete/{userId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteAccount(@PathVariable UUID userId) {
+        authService.deleteAccount(userId);
+        return ResponseEntity.ok(ApiResponse.success("Your account has been permanently deleted", null));
+    }
 
 }

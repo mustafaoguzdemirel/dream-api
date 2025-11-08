@@ -4,7 +4,9 @@ import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
 import com.mustafaoguzdemirel.dream_api.repository.DreamRepository;
+import com.mustafaoguzdemirel.dream_api.repository.MoodAnalysisRepository;
 import com.mustafaoguzdemirel.dream_api.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -17,10 +19,12 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final DreamRepository dreamRepository;
+    private final MoodAnalysisRepository moodAnalysisRepository;
 
-    public AuthService(UserRepository userRepository, DreamRepository dreamRepository) {
+    public AuthService(UserRepository userRepository, DreamRepository dreamRepository, MoodAnalysisRepository moodAnalysisRepository) {
         this.userRepository = userRepository;
         this.dreamRepository = dreamRepository;
+        this.moodAnalysisRepository = moodAnalysisRepository;
     }
 
     public AppUser createAnonymousUser() {
@@ -82,6 +86,17 @@ public class AuthService {
         return userRepository.save(newUser);
     }
 
+    @Transactional
+    public void deleteAccount(UUID userId) {
+        AppUser user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // 🔹 İlişkili verileri temizle
+        dreamRepository.deleteAllByUser(user);
+        moodAnalysisRepository.deleteAllByUser(user);
+
+        // 🔹 Kullanıcıyı sil
+        userRepository.delete(user);
+    }
 
 }

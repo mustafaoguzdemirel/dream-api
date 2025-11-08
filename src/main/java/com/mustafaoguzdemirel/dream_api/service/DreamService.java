@@ -6,6 +6,7 @@ import com.mustafaoguzdemirel.dream_api.dto.response.DreamCalendarResponse;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamListItemResponse;
+import com.mustafaoguzdemirel.dream_api.dto.response.MoodAnalysisResponse;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
 import com.mustafaoguzdemirel.dream_api.entity.MoodAnalysis;
@@ -17,9 +18,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -131,25 +134,54 @@ public class DreamService {
             YearMonth yearMonth = YearMonth.of(currentYear, month);
             int daysInMonth = yearMonth.lengthOfMonth();
 
+            // 🔹 O ayın ilk günü haftanın hangi gününe denk geliyor
+            LocalDate firstDayOfMonth = LocalDate.of(currentYear, month, 1);
+            DayOfWeek firstDayOfWeek = firstDayOfMonth.getDayOfWeek();
+            int startOffset = firstDayOfWeek.getValue() - 1; // Pazartesi=0, Salı=1, Çarşamba=2, ...
+
             List<DreamCalendarResponse.DayData> days = new ArrayList<>();
 
-            for (int day = 1; day <= daysInMonth; day++) { // ← sadece gerçek günler
-                LocalDate date = LocalDate.of(currentYear, month, day);
-                UUID dreamId = dreams.stream()
-                        .filter(d -> d.getCreatedAt().toLocalDate().isEqual(date))
-                        .map(Dream::getId)
-                        .findFirst()
-                        .orElse(null);
+            // 🔹 Önceki aydan eklenecek gün sayısı
+            YearMonth prevMonth = yearMonth.minusMonths(1);
+            int prevMonthDays = prevMonth.lengthOfMonth();
+            for (int i = startOffset - 1; i >= 0; i--) {
+                int dayNum = prevMonthDays - i;
+                LocalDate date = LocalDate.of(prevMonth.getYear(), prevMonth.getMonth(), dayNum);
+                UUID dreamId = findDreamIdByDate(dreams, date);
+                days.add(new DreamCalendarResponse.DayData(dayNum, dreamId, false)); // 🔹 false → başka aydan
+            }
 
-                days.add(new DreamCalendarResponse.DayData(day, dreamId));
+            // 🔹 O ayın günleri
+            for (int day = 1; day <= daysInMonth; day++) {
+                LocalDate date = LocalDate.of(currentYear, month, day);
+                UUID dreamId = findDreamIdByDate(dreams, date);
+                days.add(new DreamCalendarResponse.DayData(day, dreamId, true)); // 🔹 true → bu ay
+            }
+
+            // 🔹 35 kutu tamamlanana kadar sonraki aydan gün ekle
+            int remaining = 35 - days.size();
+            YearMonth nextMonth = yearMonth.plusMonths(1);
+            for (int i = 1; i <= remaining; i++) {
+                LocalDate date = LocalDate.of(nextMonth.getYear(), nextMonth.getMonth(), i);
+                UUID dreamId = findDreamIdByDate(dreams, date);
+                days.add(new DreamCalendarResponse.DayData(i, dreamId, false));
             }
 
             monthList.add(new DreamCalendarResponse.MonthData(month, days));
         }
 
-
         return new DreamCalendarResponse(currentYear, monthList);
     }
+
+    // 🔹 Yardımcı fonksiyon
+    private UUID findDreamIdByDate(List<Dream> dreams, LocalDate date) {
+        return dreams.stream()
+                .filter(d -> d.getCreatedAt().toLocalDate().isEqual(date))
+                .map(Dream::getId)
+                .findFirst()
+                .orElse(null);
+    }
+
 
     public DreamDetailResponse getDreamDetail(UUID dreamId) {
         Dream dream = dreamRepository.findById(dreamId)
@@ -248,9 +280,9 @@ public class DreamService {
 
         // Response oluştur (old response)
         //   Map<String, Object> result = new HashMap<>();
-     //   result.put("dreamId", dream.getId());
-     //   result.put("detailedInterpretation", detailedInterpretation);
-     //   result.put("createdAt", dream.getCreatedAt().toString());
+        //   result.put("dreamId", dream.getId());
+        //   result.put("detailedInterpretation", detailedInterpretation);
+        //   result.put("createdAt", dream.getCreatedAt().toString());
 
         return dreamDetailResponse;
     }
@@ -278,8 +310,8 @@ public class DreamService {
                         "Be empathetic, insightful, and write naturally. " +
                         "Respond ONLY in the following JSON format without any extra text:\n\n" +
                         "{\n" +
-                        "  \"dominant_emotions\": [\"emotion1\", \"emotion2\", ...],\n" +
-                        "  \"recurring_symbols\": [\"symbol1\", \"symbol2\", ...],\n" +
+                        "  \"dominantEmotions\": [\"emotion1\", \"emotion2\", ...],\n" +
+                        "  \"recurringSymbols\": [\"symbol1\", \"symbol2\", ...],\n" +
                         "  \"analysis\": \"Your 150–200 word empathetic summary here\"\n" +
                         "}\n\n" +
                         "Dreams:\n" + allDreams;
@@ -298,17 +330,15 @@ public class DreamService {
         }
 
         // ✅ JSON’dan alanları çıkar
-        List<String> dominantEmotions = (List<String>) parsed.get("dominant_emotions");
-        List<String> recurringSymbols = (List<String>) parsed.get("recurring_symbols");
+        List<String> dominantEmotions = (List<String>) parsed.get("dominantEmotions");
+        List<String> recurringSymbols = (List<String>) parsed.get("recurringSymbols");
         String analysis = (String) parsed.get("analysis");
 
         List<DreamListItemResponse> analyzedDreamList = dreams.stream()
                 .map(dream -> new DreamListItemResponse(
                         dream.getCreatedAt().getDayOfMonth(),
                         dream.getCreatedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
-                        dream.getDreamText().length() > 50
-                                ? dream.getDreamText().substring(0, 50) + "..."
-                                : dream.getDreamText(),
+                        dream.getDreamText(),
                         dream.getId()
                 ))
                 .collect(Collectors.toList());
@@ -318,9 +348,16 @@ public class DreamService {
         moodAnalysis.setAnalyzedDreams(analyzedDreamList);
         moodAnalysisRepository.save(moodAnalysis);
 
-        parsed.put("savedId", moodAnalysis.getId());
-        parsed.put("dreamCount", dreams.size());
+        LocalDateTime createdAt = moodAnalysis.getCreatedAt();
+        String fullDate = createdAt.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String day = String.valueOf(createdAt.getDayOfMonth());
+        String monthShort = createdAt.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+
+        parsed.put("id", moodAnalysis.getId());
         parsed.put("analyzedDreams", analyzedDreamList);
+        parsed.put("fullDate", fullDate);
+        parsed.put("day", day);
+        parsed.put("month", monthShort);
         return parsed;
     }
 
@@ -360,11 +397,22 @@ public class DreamService {
         return finalText;
     }
 
-    public List<MoodAnalysis> getMoodHistory(UUID userId) {
+    public List<MoodAnalysisResponse> getMoodHistory(UUID userId) {
         AppUser user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return moodAnalysisRepository.findAllByUserOrderByCreatedAtDesc(user);
+        List<MoodAnalysis> list = moodAnalysisRepository.findAllByUserOrderByCreatedAtDesc(user);
+
+        return list.stream()
+                .map(ma -> new MoodAnalysisResponse(
+                        ma.getId(),
+                        ma.getDominantEmotions(),
+                        ma.getRecurringSymbols(),
+                        ma.getAnalysis(),
+                        ma.getAnalyzedDreams(),
+                        ma.getCreatedAt()
+                ))
+                .collect(Collectors.toList());
     }
 
 
@@ -382,11 +430,8 @@ public class DreamService {
         return dreams.stream()
                 .map(dream -> new DreamListItemResponse(
                         dream.getCreatedAt().getDayOfMonth(),
-                        dream.getCreatedAt().getMonth()
-                                .getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
-                        dream.getDreamText().length() > 50
-                                ? dream.getDreamText().substring(0, 50) + "..."
-                                : dream.getDreamText(),
+                        dream.getCreatedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                        dream.getDreamText(),
                         dream.getId()
                 ))
                 .collect(Collectors.toList());

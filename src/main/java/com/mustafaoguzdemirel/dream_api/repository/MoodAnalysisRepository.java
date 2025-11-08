@@ -11,4 +11,6 @@ import java.util.UUID;
 @Repository
 public interface MoodAnalysisRepository extends JpaRepository<MoodAnalysis, UUID> {
     List<MoodAnalysis> findAllByUserOrderByCreatedAtDesc(AppUser user);
+    void deleteAllByUser(AppUser user);
+
 }

@@ -17,5 +17,6 @@ public interface DreamRepository extends JpaRepository<Dream, UUID> {
     List<Dream> findByUserOrderByCreatedAtDesc(AppUser user);
     List<Dream> findTop3ByUserOrderByCreatedAtDesc(AppUser user);
 
+    void deleteAllByUser(AppUser user);
 
 }

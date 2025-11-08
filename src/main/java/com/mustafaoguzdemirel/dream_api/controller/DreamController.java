@@ -1,10 +1,7 @@
 package com.mustafaoguzdemirel.dream_api.controller;
 
-import com.mustafaoguzdemirel.dream_api.dto.response.ApiResponse;
-import com.mustafaoguzdemirel.dream_api.dto.response.DreamCalendarResponse;
-import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
+import com.mustafaoguzdemirel.dream_api.dto.response.*;
 import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
-import com.mustafaoguzdemirel.dream_api.dto.response.DreamListItemResponse;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
 import com.mustafaoguzdemirel.dream_api.entity.MoodAnalysis;
 import com.mustafaoguzdemirel.dream_api.service.DreamService;
@@ -142,9 +139,9 @@ public class DreamController {
     }
 
     @GetMapping("/mood-history/{userId}")
-    public ResponseEntity<ApiResponse<List<MoodAnalysis>>> getMoodHistory(@PathVariable UUID userId) {
+    public ResponseEntity<ApiResponse<List<MoodAnalysisResponse>>> getMoodHistory(@PathVariable UUID userId) {
         try {
-            List<MoodAnalysis> history = dreamService.getMoodHistory(userId);
+            List<MoodAnalysisResponse> history = dreamService.getMoodHistory(userId);
             return ResponseEntity.ok(ApiResponse.success("Mood analysis history fetched", history));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
