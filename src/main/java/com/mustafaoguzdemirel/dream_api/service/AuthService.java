@@ -6,12 +6,15 @@ import com.mustafaoguzdemirel.dream_api.entity.Dream;
 import com.mustafaoguzdemirel.dream_api.repository.DreamRepository;
 import com.mustafaoguzdemirel.dream_api.repository.MoodAnalysisRepository;
 import com.mustafaoguzdemirel.dream_api.repository.UserRepository;
+import com.mustafaoguzdemirel.dream_api.security.JwtUtil;
 import jakarta.transaction.Transactional;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -20,11 +23,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final DreamRepository dreamRepository;
     private final MoodAnalysisRepository moodAnalysisRepository;
+    private final JwtUtil jwtUtil;
 
-    public AuthService(UserRepository userRepository, DreamRepository dreamRepository, MoodAnalysisRepository moodAnalysisRepository) {
+    public AuthService(
+            UserRepository userRepository,
+            DreamRepository dreamRepository,
+            MoodAnalysisRepository moodAnalysisRepository,
+            JwtUtil jwtUtil
+    ) {
         this.userRepository = userRepository;
         this.dreamRepository = dreamRepository;
         this.moodAnalysisRepository = moodAnalysisRepository;
+        this.jwtUtil = jwtUtil;
     }
 
     public AppUser createAnonymousUser() {

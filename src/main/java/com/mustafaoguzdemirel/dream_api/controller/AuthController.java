@@ -4,9 +4,13 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.mustafaoguzdemirel.dream_api.dto.response.ApiResponse;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
+import com.mustafaoguzdemirel.dream_api.security.CustomUserDetails;
+import com.mustafaoguzdemirel.dream_api.security.JwtUtil;
 import com.mustafaoguzdemirel.dream_api.service.AuthService;
 import com.mustafaoguzdemirel.dream_api.service.GoogleVerifier;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -19,9 +23,11 @@ import java.util.UUID;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtUtil jwtUtil;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JwtUtil jwtUtil) {
         this.authService = authService;
+        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping("/anonymous")
@@ -46,8 +52,12 @@ public class AuthController {
             user = authService.createAnonymousUser();
         }
 
+        // JWT token oluştur
+        String token = jwtUtil.generateToken(user.getUserId());
+
         Map<String, Object> data = new HashMap<>();
         data.put("userId", user.getUserId());
+        data.put("token", token);  // 🔑 JWT token eklendi
         data.put("lastDreamInterpretedDate", user.getLastDreamInterpretedDate());
         data.put("todayDream", todayDream); // null olabilir
 
@@ -78,8 +88,12 @@ public class AuthController {
         LocalDate today = LocalDate.now();
         DreamDetailResponse todayDream = authService.getTodayDreamIfExists(user, today);
 
+        // JWT token oluştur
+        String token = jwtUtil.generateToken(user.getUserId());
+
         Map<String, Object> data = new HashMap<>();
         data.put("userId", user.getUserId());
+        data.put("token", token);  // 🔑 JWT token eklendi
         data.put("lastDreamInterpretedDate", user.getLastDreamInterpretedDate());
         data.put("todayDream", todayDream);
         data.put("email", user.getEmail());
@@ -88,8 +102,24 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Google user authenticated", data));
     }
 
-    @DeleteMapping("/delete/{userId}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteAccount(@PathVariable UUID userId) {
+    /**
+     * Helper method: JWT token'dan authenticated user'ın userId'sini çıkarır
+     */
+    private UUID getAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getUserId();
+    }
+
+    /**
+     * Hesap silme endpoint'i - JWT token'dan userId alıyor
+     * NOT: Bu endpoint /api/auth/ altında olduğu için normalde açık olurdu,
+     * ama biz bunu /api/user/ altına taşımalıyız. Şimdilik burada kalsın.
+     */
+    @DeleteMapping("/delete")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteAccount() {
+        // JWT token'dan userId al
+        UUID userId = getAuthenticatedUserId();
         authService.deleteAccount(userId);
         return ResponseEntity.ok(ApiResponse.success("Your account has been permanently deleted", null));
     }

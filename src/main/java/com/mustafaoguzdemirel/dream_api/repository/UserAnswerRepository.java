@@ -12,8 +12,9 @@ import java.util.UUID;
 
 @Repository
 public interface UserAnswerRepository extends JpaRepository<UserAnswer, Long> {
-    List<UserAnswer> findByUserId(Long userId);
-    List<UserAnswer> findByUser_UserId(UUID userId);
+    // findByUserId kaldırıldı - userId artık AppUser entity'sinin id'si ve UUID tipinde
+    // Bunun yerine findByUser_Id kullanılmalı (AppUser.id -> UUID)
+    List<UserAnswer> findByUser_Id(UUID userId);
     Optional<UserAnswer> findByUserAndQuestion(AppUser user, Question question);
 
 }

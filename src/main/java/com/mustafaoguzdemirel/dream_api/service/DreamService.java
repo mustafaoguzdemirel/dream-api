@@ -363,7 +363,7 @@ public class DreamService {
 
 
     private String buildUserProfilePrompt(UUID userId) {
-        List<UserAnswer> answers = userAnswerRepository.findByUser_UserId(userId);
+        List<UserAnswer> answers = userAnswerRepository.findByUser_Id(userId);
 
         if (answers.isEmpty()) {
             return "for a general audience with no specific profile";

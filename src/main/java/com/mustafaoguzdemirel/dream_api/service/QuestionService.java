@@ -40,7 +40,7 @@ public class QuestionService {
         List<Question> questions = questionRepository.findAll();
 
         // kullanıcının verdiği cevapları çek
-        List<UserAnswer> userAnswers = userAnswerRepository.findByUser_UserId(userId);
+        List<UserAnswer> userAnswers = userAnswerRepository.findByUser_Id(userId);
 
         // hangi option'lar seçilmiş onları set'e al
         Set<Long> selectedOptionIds = userAnswers.stream()

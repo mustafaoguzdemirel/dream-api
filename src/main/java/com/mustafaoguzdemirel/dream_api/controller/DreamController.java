@@ -4,10 +4,13 @@ import com.mustafaoguzdemirel.dream_api.dto.response.*;
 import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
 import com.mustafaoguzdemirel.dream_api.entity.MoodAnalysis;
+import com.mustafaoguzdemirel.dream_api.security.CustomUserDetails;
 import com.mustafaoguzdemirel.dream_api.service.DreamService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,18 +27,27 @@ public class DreamController {
         this.dreamService = dreamService;
     }
 
+    /**
+     * Helper method: JWT token'dan authenticated user'ın userId'sini çıkarır
+     */
+    private UUID getAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getUserId();
+    }
+
     @PostMapping("/interpret")
     public ResponseEntity<ApiResponse<DreamDetailResponse>> interpretDream(@RequestBody Map<String, String> request) {
         try {
             String dreamText = request.get("dreamText");
-            String userIdStr = request.get("userId");
 
-            if (dreamText == null || userIdStr == null) {
+            if (dreamText == null || dreamText.isBlank()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(ApiResponse.error("INVALID_REQUEST", "Missing userId or dreamText", null));
+                        .body(ApiResponse.error("INVALID_REQUEST", "Missing dreamText", null));
             }
 
-            UUID userId = UUID.fromString(userIdStr);
+            // JWT token'dan userId al
+            UUID userId = getAuthenticatedUserId();
             DreamDetailResponse result = dreamService.interpretDreamForUser(userId, dreamText);
 
             return ResponseEntity.ok(ApiResponse.success("Dream interpreted successfully", result));
@@ -58,9 +70,11 @@ public class DreamController {
                 .body(ApiResponse.success("Dream saved successfully", savedDream));
     }
 
-    @GetMapping("/history/{userId}")
-    public ResponseEntity<ApiResponse<List<Dream>>> getDreamHistory(@PathVariable UUID userId) {
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<List<Dream>>> getDreamHistory() {
         try {
+            // JWT token'dan userId al
+            UUID userId = getAuthenticatedUserId();
             List<Dream> dreams = dreamService.getDreamHistory(userId);
             return ResponseEntity.ok(
                     ApiResponse.success("Dream history fetched successfully", dreams)
@@ -76,9 +90,11 @@ public class DreamController {
         }
     }
 
-    @GetMapping("/calendar/{userId}")
-    public ResponseEntity<ApiResponse<DreamCalendarResponse>> getDreamCalendar(@PathVariable UUID userId) {
+    @GetMapping("/calendar")
+    public ResponseEntity<ApiResponse<DreamCalendarResponse>> getDreamCalendar() {
         try {
+            // JWT token'dan userId al
+            UUID userId = getAuthenticatedUserId();
             DreamCalendarResponse calendar = dreamService.getDreamCalendar(userId);
             return ResponseEntity.ok(ApiResponse.success("Dream calendar fetched successfully", calendar));
         } catch (RuntimeException e) {
@@ -124,9 +140,11 @@ public class DreamController {
         }
     }
 
-    @GetMapping("/mood-analysis/{userId}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getMoodAnalysis(@PathVariable UUID userId) {
+    @GetMapping("/mood-analysis")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMoodAnalysis() {
         try {
+            // JWT token'dan userId al
+            UUID userId = getAuthenticatedUserId();
             Map<String, Object> result = dreamService.analyzeRecentDreams(userId);
             return ResponseEntity.ok(ApiResponse.success("Mood analysis generated successfully", result));
         } catch (RuntimeException e) {
@@ -138,9 +156,11 @@ public class DreamController {
         }
     }
 
-    @GetMapping("/mood-history/{userId}")
-    public ResponseEntity<ApiResponse<List<MoodAnalysisResponse>>> getMoodHistory(@PathVariable UUID userId) {
+    @GetMapping("/mood-history")
+    public ResponseEntity<ApiResponse<List<MoodAnalysisResponse>>> getMoodHistory() {
         try {
+            // JWT token'dan userId al
+            UUID userId = getAuthenticatedUserId();
             List<MoodAnalysisResponse> history = dreamService.getMoodHistory(userId);
             return ResponseEntity.ok(ApiResponse.success("Mood analysis history fetched", history));
         } catch (RuntimeException e) {
@@ -152,12 +172,13 @@ public class DreamController {
         }
     }
 
-    @GetMapping("/list/{userId}")
+    @GetMapping("/list")
     public ResponseEntity<ApiResponse<List<DreamListItemResponse>>> getDreamList(
-            @PathVariable UUID userId,
             @RequestParam(defaultValue = "false") boolean isLastThree
     ) {
         try {
+            // JWT token'dan userId al
+            UUID userId = getAuthenticatedUserId();
             List<DreamListItemResponse> list = dreamService.getDreamList(userId, isLastThree);
             return ResponseEntity.ok(
                     ApiResponse.success("Dream list fetched successfully", list)

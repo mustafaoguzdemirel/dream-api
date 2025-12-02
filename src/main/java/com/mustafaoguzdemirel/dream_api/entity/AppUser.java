@@ -10,11 +10,7 @@ import java.util.UUID;
 public class AppUser {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true)
-    private UUID userId;
+    private UUID id;  // Manuel olarak set edilecek (UUID.randomUUID())
 
     @Column(name = "google_id", unique = true)
     private String googleId;
@@ -27,20 +23,32 @@ public class AppUser {
 
     public AppUser() {}
 
-    public AppUser(UUID userId) {
-        this.userId = userId;
+    public AppUser(UUID id) {
+        this.id = id;
     }
 
-    public Long getId() {
+    /**
+     * Primary key: UUID
+     * Artık userId yerine direkt id kullanıyoruz
+     */
+    public UUID getId() {
         return id;
     }
 
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    /**
+     * Backward compatibility için getUserId metodu
+     * Artık id ve userId aynı şey
+     */
     public UUID getUserId() {
-        return userId;
+        return id;
     }
 
     public void setUserId(UUID userId) {
-        this.userId = userId;
+        this.id = userId;
     }
 
     public LocalDate getLastDreamInterpretedDate() {
