@@ -7,6 +7,9 @@ import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Option;
 import com.mustafaoguzdemirel.dream_api.entity.Question;
 import com.mustafaoguzdemirel.dream_api.entity.UserAnswer;
+import com.mustafaoguzdemirel.dream_api.exception.OptionNotFoundException;
+import com.mustafaoguzdemirel.dream_api.exception.QuestionNotFoundException;
+import com.mustafaoguzdemirel.dream_api.exception.UserNotFoundException;
 import com.mustafaoguzdemirel.dream_api.repository.OptionRepository;
 import com.mustafaoguzdemirel.dream_api.repository.QuestionRepository;
 import com.mustafaoguzdemirel.dream_api.repository.UserAnswerRepository;
@@ -70,14 +73,14 @@ public class QuestionService {
 
         // user kontrolü
         AppUser user = appUserRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(userId));
 
         // question & option kontrolü
         Question question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new RuntimeException("Question not found"));
+                .orElseThrow(() -> new QuestionNotFoundException(questionId));
 
         Option option = optionRepository.findById(optionId)
-                .orElseThrow(() -> new RuntimeException("Option not found"));
+                .orElseThrow(() -> new OptionNotFoundException(optionId));
 
         // aynı soruya verilen yanıtı bul
         Optional<UserAnswer> existingAnswer =

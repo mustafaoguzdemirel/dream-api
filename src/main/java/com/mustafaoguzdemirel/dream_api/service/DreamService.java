@@ -1,110 +1,58 @@
 package com.mustafaoguzdemirel.dream_api.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamCalendarResponse;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
-import com.mustafaoguzdemirel.dream_api.dto.request.DreamSaveRequest;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamListItemResponse;
-import com.mustafaoguzdemirel.dream_api.dto.response.MoodAnalysisResponse;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
-import com.mustafaoguzdemirel.dream_api.entity.MoodAnalysis;
-import com.mustafaoguzdemirel.dream_api.entity.UserAnswer;
-import com.mustafaoguzdemirel.dream_api.enums.QuestionType;
-import com.mustafaoguzdemirel.dream_api.repository.*;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Value;
+import com.mustafaoguzdemirel.dream_api.exception.DreamNotFoundException;
+import com.mustafaoguzdemirel.dream_api.exception.UserNotFoundException;
+import com.mustafaoguzdemirel.dream_api.repository.DreamRepository;
+import com.mustafaoguzdemirel.dream_api.repository.UserRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Service responsible for dream CRUD operations and interpretation coordination
+ * Delegates AI operations to OpenAiService and user profiling to UserProfileService
+ */
 @Service
 public class DreamService {
 
-    @Value("${openai.api.key}")
-    private String openAiApiKey;
-
-    private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-
-    private final UserAnswerRepository userAnswerRepository;
-    private final QuestionRepository questionRepository;
-    private final OptionRepository optionRepository;
     private final UserRepository userRepository;
     private final DreamRepository dreamRepository;
-    private final MoodAnalysisRepository moodAnalysisRepository;
+    private final OpenAiService openAiService;
+    private final UserProfileService userProfileService;
 
     public DreamService(
-            UserAnswerRepository userAnswerRepository,
-            QuestionRepository questionRepository,
-            OptionRepository optionRepository,
             UserRepository userRepository,
             DreamRepository dreamRepository,
-            MoodAnalysisRepository moodAnalysisRepository
+            OpenAiService openAiService,
+            UserProfileService userProfileService
     ) {
-        this.userAnswerRepository = userAnswerRepository;
-        this.questionRepository = questionRepository;
-        this.optionRepository = optionRepository;
         this.userRepository = userRepository;
         this.dreamRepository = dreamRepository;
-        this.moodAnalysisRepository = moodAnalysisRepository;
+        this.openAiService = openAiService;
+        this.userProfileService = userProfileService;
     }
 
-    public String interpretDream(String prompt) {
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-
-            Map<String, Object> message = new HashMap<>();
-            message.put("role", "user");
-            message.put("content", prompt);
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4o-mini");
-            requestBody.put("messages", new Object[]{message});
-
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Authorization", "Bearer " + openAiApiKey);
-            headers.put("Content-Type", "application/json");
-
-            org.springframework.http.HttpEntity<Map<String, Object>> entity =
-                    new org.springframework.http.HttpEntity<>(requestBody, new org.springframework.http.HttpHeaders() {{
-                        setAll(headers);
-                    }});
-
-            Map<String, Object> response = restTemplate.postForObject(OPENAI_URL, entity, Map.class);
-
-            if (response == null || !response.containsKey("choices")) {
-                throw new RuntimeException("Invalid response from OpenAI");
-            }
-
-            var choices = (java.util.List<Map<String, Object>>) response.get("choices");
-            if (choices.isEmpty()) {
-                throw new RuntimeException("Empty choices from OpenAI");
-            }
-
-            var messageMap = (Map<String, Object>) choices.get(0).get("message");
-            return messageMap.get("content").toString();
-
-        } catch (Exception e) {
-            throw new RuntimeException("Dream interpretation failed: " + e.getMessage(), e);
-        }
-    }
-
+    /**
+     * Saves a dream to the database
+     */
     public Dream saveDream(DreamSaveRequest request) {
-        Optional<AppUser> userOpt = userRepository.findByUserId(request.getUserId());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found with ID: " + request.getUserId());
-        }
-
-        AppUser user = userOpt.get();
+        AppUser user = userRepository.findByUserId(request.getUserId())
+                .orElseThrow(() -> new UserNotFoundException(request.getUserId()));
 
         Dream dream = new Dream();
         dream.setUser(user);
@@ -115,15 +63,21 @@ public class DreamService {
         return dreamRepository.save(dream);
     }
 
+    /**
+     * Gets all dreams for a user
+     */
     public List<Dream> getDreamHistory(UUID userId) {
         AppUser user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(userId));
         return dreamRepository.findByUser(user);
     }
 
+    /**
+     * Generates a calendar view of user's dreams
+     */
     public DreamCalendarResponse getDreamCalendar(UUID userId) {
         AppUser user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(userId));
 
         List<Dream> dreams = dreamRepository.findByUser(user);
 
@@ -134,31 +88,30 @@ public class DreamService {
             YearMonth yearMonth = YearMonth.of(currentYear, month);
             int daysInMonth = yearMonth.lengthOfMonth();
 
-            // 🔹 O ayın ilk günü haftanın hangi gününe denk geliyor
             LocalDate firstDayOfMonth = LocalDate.of(currentYear, month, 1);
             DayOfWeek firstDayOfWeek = firstDayOfMonth.getDayOfWeek();
-            int startOffset = firstDayOfWeek.getValue() - 1; // Pazartesi=0, Salı=1, Çarşamba=2, ...
+            int startOffset = firstDayOfWeek.getValue() - 1;
 
             List<DreamCalendarResponse.DayData> days = new ArrayList<>();
 
-            // 🔹 Önceki aydan eklenecek gün sayısı
+            // Add previous month days
             YearMonth prevMonth = yearMonth.minusMonths(1);
             int prevMonthDays = prevMonth.lengthOfMonth();
             for (int i = startOffset - 1; i >= 0; i--) {
                 int dayNum = prevMonthDays - i;
                 LocalDate date = LocalDate.of(prevMonth.getYear(), prevMonth.getMonth(), dayNum);
                 UUID dreamId = findDreamIdByDate(dreams, date);
-                days.add(new DreamCalendarResponse.DayData(dayNum, dreamId, false)); // 🔹 false → başka aydan
+                days.add(new DreamCalendarResponse.DayData(dayNum, dreamId, false));
             }
 
-            // 🔹 O ayın günleri
+            // Add current month days
             for (int day = 1; day <= daysInMonth; day++) {
                 LocalDate date = LocalDate.of(currentYear, month, day);
                 UUID dreamId = findDreamIdByDate(dreams, date);
-                days.add(new DreamCalendarResponse.DayData(day, dreamId, true)); // 🔹 true → bu ay
+                days.add(new DreamCalendarResponse.DayData(day, dreamId, true));
             }
 
-            // 🔹 35 kutu tamamlanana kadar sonraki aydan gün ekle
+            // Add next month days to fill 35 slots
             int remaining = 35 - days.size();
             YearMonth nextMonth = yearMonth.plusMonths(1);
             for (int i = 1; i <= remaining; i++) {
@@ -173,7 +126,6 @@ public class DreamService {
         return new DreamCalendarResponse(currentYear, monthList);
     }
 
-    // 🔹 Yardımcı fonksiyon
     private UUID findDreamIdByDate(List<Dream> dreams, LocalDate date) {
         return dreams.stream()
                 .filter(d -> d.getCreatedAt().toLocalDate().isEqual(date))
@@ -182,10 +134,12 @@ public class DreamService {
                 .orElse(null);
     }
 
-
+    /**
+     * Gets dream detail by ID
+     */
     public DreamDetailResponse getDreamDetail(UUID dreamId) {
         Dream dream = dreamRepository.findById(dreamId)
-                .orElseThrow(() -> new EntityNotFoundException("Dream not found"));
+                .orElseThrow(() -> new DreamNotFoundException(dreamId));
 
         return new DreamDetailResponse(
                 dream.getId(),
@@ -196,30 +150,31 @@ public class DreamService {
         );
     }
 
+    /**
+     * Interprets a dream for a user using AI
+     * Coordinates between user profile service and OpenAI service
+     */
     public DreamDetailResponse interpretDreamForUser(UUID userId, String dreamText) {
         AppUser user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(userId));
 
         LocalDate today = LocalDate.now();
 
-        // Eğer kullanıcı bugün zaten rüya yorumlattıysa hata fırlat
-        //   if (today.equals(user.getLastDreamInterpretedDate())) {
+        // TODO: Uncomment to enable daily limit
+        // if (today.equals(user.getLastDreamInterpretedDate())) {
         //     throw new RuntimeException("User has already interpreted a dream today.");
-        //} //TODO!!!! AÇ
+        // }
 
-        // ✅ Kullanıcının cevaplarından kişisel prompt oluştur
-        String userProfilePrompt = buildUserProfilePrompt(userId);
-
-        // ✅ GPT'ye gönderilecek tam prompt'u oluştur
+        // Build personalized prompt using user profile
+        String userProfilePrompt = userProfileService.buildUserProfilePrompt(userId);
 
         String fullPrompt = "Give a short and emotionally warm interpretation of this dream " +
                 userProfilePrompt + ". Write naturally, like giving comforting advice, but keep it under 150 words. Dream text: " + dreamText;
 
+        // Get interpretation from OpenAI
+        String interpretation = openAiService.generateCompletion(fullPrompt);
 
-        // ✅ GPT'den yorum al (artık fullPrompt gönderiyoruz)
-        String interpretation = interpretDream(fullPrompt);
-
-        // Yeni dream kaydını oluştur
+        // Save dream
         Dream dream = new Dream();
         dream.setUser(user);
         dream.setDreamText(dreamText);
@@ -228,34 +183,28 @@ public class DreamService {
 
         dreamRepository.save(dream);
 
-        // Kullanıcının son yorum tarihini bugüne güncelle
+        // Update last interpretation date
         user.setLastDreamInterpretedDate(today);
         userRepository.save(user);
 
-        DreamDetailResponse dreamDetailResponse = new DreamDetailResponse(
+        return new DreamDetailResponse(
                 dream.getId(),
                 dream.getDreamText(),
                 interpretation,
                 "",
                 dream.getCreatedAt()
         );
-
-        // Response oluştur (old response)
-        //   Map<String, Object> data = new HashMap<>();
-        //   data.put("interpretation", interpretation);
-        //   data.put("dreamId", dream.getId());
-        //   data.put("createdAt", dream.getCreatedAt().toString());
-        //   data.put("prompt", fullPrompt); // istersen debug için ekleyebilirsin
-
-        return dreamDetailResponse;
     }
 
+    /**
+     * Generates a detailed interpretation for an existing dream
+     */
     public DreamDetailResponse getDetailedInterpretation(UUID dreamId) {
         Dream dream = dreamRepository.findById(dreamId)
-                .orElseThrow(() -> new RuntimeException("Dream not found"));
+                .orElseThrow(() -> new DreamNotFoundException(dreamId));
 
         AppUser user = dream.getUser();
-        String userProfilePrompt = buildUserProfilePrompt(user.getUserId());
+        String userProfilePrompt = userProfileService.buildUserProfilePrompt(user.getUserId());
 
         String fullPrompt = "You are an experienced dream analyst. Provide a detailed and insightful interpretation " +
                 "of the following dream, taking into account the user's personality and emotional profile " + userProfilePrompt +
@@ -264,161 +213,27 @@ public class DreamService {
                 "\n\nDream text: " + dream.getDreamText() +
                 "\n\nShort interpretation: " + dream.getInterpretation();
 
-        String detailedInterpretation = interpretDream(fullPrompt);
+        String detailedInterpretation = openAiService.generateCompletion(fullPrompt);
 
-        // 💾 kaydı güncelle
+        // Update dream record
         dream.setDetailedInterpretation(detailedInterpretation);
         dreamRepository.save(dream);
 
-        DreamDetailResponse dreamDetailResponse = new DreamDetailResponse(
+        return new DreamDetailResponse(
                 dream.getId(),
                 dream.getDreamText(),
                 dream.getInterpretation(),
                 detailedInterpretation,
                 dream.getCreatedAt()
         );
-
-        // Response oluştur (old response)
-        //   Map<String, Object> result = new HashMap<>();
-        //   result.put("dreamId", dream.getId());
-        //   result.put("detailedInterpretation", detailedInterpretation);
-        //   result.put("createdAt", dream.getCreatedAt().toString());
-
-        return dreamDetailResponse;
     }
 
-    public Map<String, Object> analyzeRecentDreams(UUID userId) {
-        AppUser user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        List<Dream> dreams = dreamRepository.findTop5ByUserOrderByCreatedAtDesc(user);
-        if (dreams.isEmpty()) {
-            throw new RuntimeException("No dreams found for this user.");
-        }
-
-        String allDreams = dreams.stream()
-                .map(Dream::getDreamText)
-                .collect(Collectors.joining("\n---\n"));
-
-        String userProfilePrompt = buildUserProfilePrompt(userId);
-
-        String prompt =
-                "You are an expert dream psychologist. Analyze the following dreams as a whole " +
-                        "for a person who fits this description: " + userProfilePrompt + ". " +
-                        "Find recurring emotional patterns, symbols, or themes across them. " +
-                        "Summarize the user's current emotional and psychological state in around 150–200 words. " +
-                        "Be empathetic, insightful, and write naturally. " +
-                        "Respond ONLY in the following JSON format without any extra text:\n\n" +
-                        "{\n" +
-                        "  \"dominantEmotions\": [\"emotion1\", \"emotion2\", ...],\n" +
-                        "  \"recurringSymbols\": [\"symbol1\", \"symbol2\", ...],\n" +
-                        "  \"analysis\": \"Your 150–200 word empathetic summary here\"\n" +
-                        "}\n\n" +
-                        "Dreams:\n" + allDreams;
-
-        String jsonResponse = interpretDream(prompt);
-
-        jsonResponse = jsonResponse.replaceAll("(?s)^.*?\\{", "{").replaceAll("}.*$", "}");
-
-        Map<String, Object> parsed;
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            parsed = mapper.readValue(jsonResponse, new TypeReference<Map<String, Object>>() {
-            });
-        } catch (Exception e) {
-            parsed = Map.of("raw_response", jsonResponse);
-        }
-
-        // ✅ JSON’dan alanları çıkar
-        List<String> dominantEmotions = (List<String>) parsed.get("dominantEmotions");
-        List<String> recurringSymbols = (List<String>) parsed.get("recurringSymbols");
-        String analysis = (String) parsed.get("analysis");
-
-        List<DreamListItemResponse> analyzedDreamList = dreams.stream()
-                .map(dream -> new DreamListItemResponse(
-                        dream.getCreatedAt().getDayOfMonth(),
-                        dream.getCreatedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
-                        dream.getDreamText(),
-                        dream.getId()
-                ))
-                .collect(Collectors.toList());
-
-        // ✅ MoodAnalysis tablosuna kaydet
-        MoodAnalysis moodAnalysis = new MoodAnalysis(user, dominantEmotions, recurringSymbols, analysis);
-        moodAnalysis.setAnalyzedDreams(analyzedDreamList);
-        moodAnalysisRepository.save(moodAnalysis);
-
-        LocalDateTime createdAt = moodAnalysis.getCreatedAt();
-        String fullDate = createdAt.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        String day = String.valueOf(createdAt.getDayOfMonth());
-        String monthShort = createdAt.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-
-        parsed.put("id", moodAnalysis.getId());
-        parsed.put("analyzedDreams", analyzedDreamList);
-        parsed.put("fullDate", fullDate);
-        parsed.put("day", day);
-        parsed.put("month", monthShort);
-        return parsed;
-    }
-
-
-    private String buildUserProfilePrompt(UUID userId) {
-        List<UserAnswer> answers = userAnswerRepository.findByUser_Id(userId);
-
-        if (answers.isEmpty()) {
-            return "for a general audience with no specific profile";
-        }
-
-        StringBuilder profile = new StringBuilder("for a person who ");
-
-        Map<QuestionType, String> answerMap = answers.stream()
-                .collect(Collectors.toMap(a -> a.getQuestion().getType(), a -> a.getOption().getContent()));
-
-        for (Map.Entry<QuestionType, String> entry : answerMap.entrySet()) {
-            QuestionType type = entry.getKey();
-            String option = entry.getValue();
-
-            switch (type) {
-                case AGE_RANGE -> profile.append("is ").append(option).append(" years old, ");
-                case GENDER_IDENTITY -> profile.append("identifies as ").append(option).append(", ");
-                case PERSONALITY -> profile.append("has a ").append(option.toLowerCase()).append(" personality, ");
-                case DREAM_RECALL -> profile.append("remembers dreams ").append(option.toLowerCase()).append(", ");
-                case VIEW_ON_DREAMS -> profile.append("views dreams ").append(option.toLowerCase()).append(", ");
-                case LIFE_FOCUS -> profile.append("is mainly focused on ").append(option.toLowerCase()).append(", ");
-                case EMOTIONAL_STATE -> profile.append("feels ").append(option.toLowerCase()).append(" lately, ");
-                case SPIRITUALITY -> profile.append("is ").append(option.toLowerCase()).append(" spiritual, ");
-                case SELF_UNDERSTANDING ->
-                        profile.append("believes they understand themselves ").append(option.toLowerCase()).append(", ");
-            }
-        }
-
-        String finalText = profile.toString().trim();
-        if (finalText.endsWith(",")) finalText = finalText.substring(0, finalText.length() - 1);
-        return finalText;
-    }
-
-    public List<MoodAnalysisResponse> getMoodHistory(UUID userId) {
-        AppUser user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        List<MoodAnalysis> list = moodAnalysisRepository.findAllByUserOrderByCreatedAtDesc(user);
-
-        return list.stream()
-                .map(ma -> new MoodAnalysisResponse(
-                        ma.getId(),
-                        ma.getDominantEmotions(),
-                        ma.getRecurringSymbols(),
-                        ma.getAnalysis(),
-                        ma.getAnalyzedDreams(),
-                        ma.getCreatedAt()
-                ))
-                .collect(Collectors.toList());
-    }
-
-
+    /**
+     * Gets dream list for a user
+     */
     public List<DreamListItemResponse> getDreamList(UUID userId, boolean isLastThree) {
         AppUser user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(userId));
 
         List<Dream> dreams;
         if (isLastThree) {
@@ -436,5 +251,4 @@ public class DreamService {
                 ))
                 .collect(Collectors.toList());
     }
-
 }

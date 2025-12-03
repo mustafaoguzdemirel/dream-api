@@ -5,6 +5,7 @@ import com.mustafaoguzdemirel.dream_api.dto.response.ApiResponse;
 import com.mustafaoguzdemirel.dream_api.dto.response.QuestionResponse;
 import com.mustafaoguzdemirel.dream_api.security.CustomUserDetails;
 import com.mustafaoguzdemirel.dream_api.service.QuestionService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -35,29 +36,16 @@ public class QuestionController {
 
     @GetMapping("/all")
     public ResponseEntity<ApiResponse<List<QuestionResponse>>> getAllQuestionsForUser() {
-        try {
-            // JWT token'dan userId al
-            UUID userId = getAuthenticatedUserId();
-            List<QuestionResponse> questions = questionService.getAllQuestionsForUser(userId);
-            return ResponseEntity.ok(ApiResponse.success("Questions fetched successfully", questions));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("INTERNAL_ERROR", "Unexpected error occurred", null));
-        }
+        // JWT token'dan userId al
+        UUID userId = getAuthenticatedUserId();
+        List<QuestionResponse> questions = questionService.getAllQuestionsForUser(userId);
+        return ResponseEntity.ok(ApiResponse.success("Questions fetched successfully", questions));
     }
 
     @PostMapping("/answer")
-    public ResponseEntity<ApiResponse<String>> saveUserAnswer(@RequestBody UserAnswerRequest request) {
-        try {
-            questionService.saveUserAnswer(request);
-            return ResponseEntity.ok(ApiResponse.success("Answer saved successfully", null));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error("INVALID_REQUEST", e.getMessage(), null));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("INTERNAL_ERROR", "Unexpected error occurred", null));
-        }
+    public ResponseEntity<ApiResponse<String>> saveUserAnswer(@Valid @RequestBody UserAnswerRequest request) {
+        questionService.saveUserAnswer(request);
+        return ResponseEntity.ok(ApiResponse.success("Answer saved successfully", null));
     }
 
 }

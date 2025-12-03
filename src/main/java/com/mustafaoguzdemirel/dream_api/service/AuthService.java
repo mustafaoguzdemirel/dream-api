@@ -3,6 +3,8 @@ package com.mustafaoguzdemirel.dream_api.service;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamDetailResponse;
 import com.mustafaoguzdemirel.dream_api.entity.AppUser;
 import com.mustafaoguzdemirel.dream_api.entity.Dream;
+import com.mustafaoguzdemirel.dream_api.exception.AnonymousUserCreationException;
+import com.mustafaoguzdemirel.dream_api.exception.UserNotFoundException;
 import com.mustafaoguzdemirel.dream_api.repository.DreamRepository;
 import com.mustafaoguzdemirel.dream_api.repository.MoodAnalysisRepository;
 import com.mustafaoguzdemirel.dream_api.repository.UserRepository;
@@ -45,7 +47,7 @@ public class AuthService {
         } catch (DataAccessException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new RuntimeException("Anonymous user creation failed: " + ex.getMessage(), ex);
+            throw new AnonymousUserCreationException("Anonymous user creation failed: " + ex.getMessage(), ex);
         }
     }
 
@@ -99,7 +101,7 @@ public class AuthService {
     @Transactional
     public void deleteAccount(UUID userId) {
         AppUser user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(userId));
 
         // 🔹 İlişkili verileri temizle
         dreamRepository.deleteAllByUser(user);
