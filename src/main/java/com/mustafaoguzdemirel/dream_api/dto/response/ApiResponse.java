@@ -1,7 +1,10 @@
 package com.mustafaoguzdemirel.dream_api.dto.response;
 
+import lombok.Getter;
+
 import java.time.LocalDateTime;
 
+@Getter
 public class ApiResponse<T> {
     private boolean success;
     private String code;
@@ -24,11 +27,4 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> error(String code, String message, T data) {
         return new ApiResponse<>(false, code, message, data);
     }
-
-    // getters
-    public boolean isSuccess() { return success; }
-    public String getCode() { return code; }
-    public String getMessage() { return message; }
-    public T getData() { return data; }
-    public LocalDateTime getTimestamp() { return timestamp; }
 }

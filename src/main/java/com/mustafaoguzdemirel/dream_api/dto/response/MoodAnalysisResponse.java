@@ -1,6 +1,6 @@
 package com.mustafaoguzdemirel.dream_api.dto.response;
 
-import com.mustafaoguzdemirel.dream_api.dto.response.DreamListItemResponse;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
+@Getter
 public class MoodAnalysisResponse {
     private UUID id;
     private List<String> dominantEmotions;
@@ -35,38 +36,5 @@ public class MoodAnalysisResponse {
         this.fullDate = createdAt.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         this.day = String.valueOf(createdAt.getDayOfMonth());
         this.month = createdAt.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-    }
-
-    // Getters
-    public UUID getId() {
-        return id;
-    }
-
-    public List<String> getDominantEmotions() {
-        return dominantEmotions;
-    }
-
-    public List<String> getRecurringSymbols() {
-        return recurringSymbols;
-    }
-
-    public String getAnalysis() {
-        return analysis;
-    }
-
-    public List<DreamListItemResponse> getAnalyzedDreams() {
-        return analyzedDreams;
-    }
-
-    public String getFullDate() {
-        return fullDate;
-    }
-
-    public String getDay() {
-        return day;
-    }
-
-    public String getMonth() {
-        return month;
     }
 }

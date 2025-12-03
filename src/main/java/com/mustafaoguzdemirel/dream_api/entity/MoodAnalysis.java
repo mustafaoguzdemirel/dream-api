@@ -3,6 +3,9 @@ package com.mustafaoguzdemirel.dream_api.entity;
 import com.mustafaoguzdemirel.dream_api.dto.response.DreamListItemResponse;
 import com.mustafaoguzdemirel.dream_api.entity.converter.DreamListItemResponseConverter;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -10,6 +13,9 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "mood_analysis")
+@Getter
+@Setter
+@NoArgsConstructor
 public class MoodAnalysis {
 
     @Id
@@ -40,72 +46,13 @@ public class MoodAnalysis {
     @Column(columnDefinition = "TEXT")
     private List<DreamListItemResponse> analyzedDreams;
 
-    public MoodAnalysis() {
-    }
-
+    // Custom constructor
     public MoodAnalysis(AppUser user, List<String> dominantEmotions, List<String> recurringSymbols, String analysis) {
         this.user = user;
         this.dominantEmotions = dominantEmotions;
         this.recurringSymbols = recurringSymbols;
         this.analysis = analysis;
         this.createdAt = LocalDateTime.now();
-    }
-
-    // Getters and Setters
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public AppUser getUser() {
-        return user;
-    }
-
-    public void setUser(AppUser user) {
-        this.user = user;
-    }
-
-    public List<String> getDominantEmotions() {
-        return dominantEmotions;
-    }
-
-    public void setDominantEmotions(List<String> dominantEmotions) {
-        this.dominantEmotions = dominantEmotions;
-    }
-
-    public List<String> getRecurringSymbols() {
-        return recurringSymbols;
-    }
-
-    public void setRecurringSymbols(List<String> recurringSymbols) {
-        this.recurringSymbols = recurringSymbols;
-    }
-
-    public String getAnalysis() {
-        return analysis;
-    }
-
-    public void setAnalysis(String analysis) {
-        this.analysis = analysis;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public List<DreamListItemResponse> getAnalyzedDreams() {
-        return analyzedDreams;
-    }
-
-    public void setAnalyzedDreams(List<DreamListItemResponse> analyzedDreams) {
-        this.analyzedDreams = analyzedDreams;
     }
 }
 

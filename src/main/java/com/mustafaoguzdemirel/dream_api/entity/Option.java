@@ -1,9 +1,15 @@
 package com.mustafaoguzdemirel.dream_api.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "option_item") // 'option' SQL'de reserved keyword olduğu için güvenli ad
+@Getter
+@Setter
+@NoArgsConstructor
 public class Option {
 
     @Id
@@ -17,21 +23,9 @@ public class Option {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    public Option() {
-    }
-
+    // Custom constructor
     public Option(Question question, String content) {
         this.question = question;
         this.content = content;
     }
-
-    // Getters & Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public Question getQuestion() { return question; }
-    public void setQuestion(Question question) { this.question = question; }
-
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
 }
